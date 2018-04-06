@@ -1,89 +1,30 @@
 #!/usr/bin/python
 
 import os
+import keras
 
-import json
-import re
-from dataImporter import importData
+from dataImporter import importData, sanitizeData
 
 from sklearn.feature_extraction import DictVectorizer
 from sklearn import linear_model, model_selection
+from sklearn.metrics import accuracy_score
+
+from keras.models import Sequential
+from keras.layers import Dense, Activation, Dropout
+from keras.optimizers import SGD, RMSprop
 
 DATA_DIR = os.path.abspath("../data")
 
 GLOBAL_DATA = os.path.join(DATA_DIR, "mix.csv")
 
-LABEL_NAME = "vote_average"
-
-FEATURES = ["adult", "budget", "genres",
-            #"original_language",
-            # "production_companies", "production_countries",
-            #"spoken_languages", #"keywords",
-            "revenue", "runtime"]
-
-GENRES_VALUES = set()
-
-def sanitizeData(data):
-    wantedFields = FEATURES
-    toDelete = []
-    for idValue in data.keys():
-        k = data[idValue].keys()
-
-        #Check wanted fields
-        for wanted in wantedFields:
-            if not len(data[idValue][wanted]):
-                toDelete.append(idValue)
-                break
-
-        #Remove unwanted features:
-        keys = list(data[idValue].keys())
-        for feature in keys:
-            if not feature in FEATURES and not feature in LABEL_NAME:
-                data[idValue].pop(feature)
-
-        #Sanitize dicts of multiple string value, keeping only the "name" field
-        for stringDic in [
-                          "genres"
-                         # "spoken_languages"
-                          #"keywords"
-                          ]: #"production_companies", "production_countries"
-            findName = re.compile("'name':( '.*?')")
-            findName = findName.findall(data[idValue][stringDic])
-            for name in findName:
-                name = name.strip().replace("'", '')
-                data[idValue][name] = 1
-            data[idValue].pop(stringDic)
-
-        #Sanitize strings, keeping only the value
-        # for stringDic in ["original_language"]:
-        #     value = data[idValue][stringDic]
-        #     data[idValue][value] = 1
-        #     data[idValue].pop(stringDic)
-
-        #Hardcoded adult value
-        data[idValue]["adult"] = 1 if data[idValue]["adult"] == "True" else 0
-
-        for key in data[idValue]:
-            try:
-                data[idValue][key] = int(float(data[idValue][key]))
-            except:
-                toDelete.append(idValue)
-
-    for i in toDelete:
-        try:
-            data.pop(i)
-        except:
-            pass
-    return (data)
-
 def retrieveLabelAndFeatures(data, ids):
     #Logistic regression only take integer value as label
     #So we switch from 0.0 - 10.0 to 0 to 100
     #nb: LabelEncoder might be better
-    labels = [int(float(result[i]["vote_average"]) * 10) for i in ids]
-    features = [result[i] for i in ids]
+    labels = [int(float(data[i]["vote_average"]) * 10) for i in ids]
+    features = [data[i] for i in ids]
     for f in features:
-        f.pop(LABEL_NAME)
+        f.pop("vote_average")
     print(features[0])
     #CF http://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.DictVectorizer.html
     v = DictVectorizer(sparse=False)
@@ -92,8 +33,7 @@ def retrieveLabelAndFeatures(data, ids):
     print(len(features[0]))
     return labels, features
 
-if __name__ == "__main__":
-    print("Movie recommendation engine - Predict score on IMDB")
+def initData():
     print()
     print("Data dir: %s"%(DATA_DIR))
     print()
@@ -102,13 +42,13 @@ if __name__ == "__main__":
     result = sanitizeData(result)
     print()
     print("File imported. %d films"%(len(result.keys())))
-    ids = list(result.keys())[:20000]
+    ids = list(result.keys())[:30000]
 
     #Retrieve labels and features
     labels, features = retrieveLabelAndFeatures(result, ids)
 
     numberOfIds = len(ids)
-    trainingSize = 5000
+    trainingSize = 10000
     testingSize = numberOfIds - trainingSize
     print("Training size: %d    |   Testing size: %d"%(trainingSize, testingSize))
 
@@ -117,16 +57,69 @@ if __name__ == "__main__":
 
     featureTesting = features[trainingSize + 1:]
     labelTesting = labels[trainingSize + 1:]
+    return (featureTraining, labelTraining, featureTesting, labelTesting)
 
+def LogisticRegressionModel(Xtrain, Ytrain, Xtest, Ytest):
     #Call logistic regression algorithm
     #CF http://scikit-learn.org/stable/auto_examples/linear_model/plot_iris_logistic.html
-    logRegreModel = linear_model.LogisticRegression(C=1e5)
+    model_LogReg = linear_model.LogisticRegression(max_iter=100, verbose=0)
 
     print("Training....")
-    logRegreModel.fit(featureTraining, labelTraining)
+    model_LogReg.fit(Xtrain, Ytrain)
 
-    accuracy = model_selection.cross_val_score(logRegreModel, featureTesting, labelTesting)
+    # accuracyTrain = model_selection.cross_val_score(model_LogReg, Xtrain, Ytrain)
+    # accuracyTest = model_selection.cross_val_score(model_LogReg, Xtest, Ytest)
+    # print("Cross val on train %s\nCross val on test %s"%(accuracyTrain, accuracyTest))
 
-    print(accuracy)
-    # print("Testing....")
-    # ret = logRegreModel.predict(featureTesting)
+    yFound = model_LogReg.predict(Xtest)
+    accuracyScore = accuracy_score(yFound, Ytest)
+    print("Accuracy score: %s"%(accuracyScore))
+
+def SequentialModel(Xtrain, Ytrain, Xtest, Ytest):
+    model = Sequential()
+    nbFeatures = len(Xtrain[0])
+    epochs = 10
+    batch_size = 256
+
+    Ytrain = keras.utils.to_categorical(Ytrain)
+    Ytest = keras.utils.to_categorical(Ytest)
+
+    nbOutput = len(Ytrain[0])
+
+    model.add(Dense(nbFeatures, activation='relu',
+                    input_shape=(nbFeatures,)))
+    model.add(Dropout(0.2))
+    model.add(Dense(nbFeatures * 2, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(nbFeatures * 4, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(nbFeatures * 6, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(nbFeatures * 4, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(nbFeatures * 2, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(nbOutput, activation='softmax'))
+
+    print(model.summary())
+
+    optimizer = RMSprop(lr=0.001)
+
+    model.compile(optimizer=optimizer,
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+
+    model.fit(Xtrain, Ytrain, epochs=epochs,
+              batch_size=batch_size,
+              verbose=1,
+              validation_data=(Xtest, Ytest))
+    score = model.evaluate(Xtest, Ytest, batch_size=batch_size)
+    print('Test loss:', score[0])
+    print('Test accuracy:', score[1])
+
+if __name__ == "__main__":
+    print("Movie recommendation engine - Predict score on IMDB")
+
+    Xtrain, Ytrain, Xtest, Ytest = initData()
+    # LogisticRegressionModel(Xtrain, Ytrain, Xtest, Ytest)
+    SequentialModel(Xtrain, Ytrain, Xtest, Ytest)
