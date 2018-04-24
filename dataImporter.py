@@ -22,9 +22,10 @@ LABEL_NAME = "vote_average"
 
 FEATURES = ["adult", "budget",
             "genres",
+            "popularity",
             #"original_language",
-            # "production_companies", "production_countries",
-            "spoken_languages", #"keywords",
+            #"production_companies", "production_countries",
+            #"spoken_languages", #"keywords",
             "revenue", "runtime"]
 
 def sanitizeData(data):
@@ -48,9 +49,10 @@ def sanitizeData(data):
         #Sanitize dicts of multiple string value, keeping only the "name" field
         for stringDic in [
                           "genres",
-                          "spoken_languages",
+                          #"spoken_languages",
+                          #"production_companies", "production_countries"
                           #"keywords"
-                          ]: #"production_companies", "production_countries"
+                          ]:
             findName = re.compile("'name':( '.*?')")
             findName = findName.findall(data[idValue][stringDic])
             for name in findName:

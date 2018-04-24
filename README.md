@@ -16,6 +16,7 @@ Machine Learning project for the course 406 at CSU Long Beach
     - revenue : int X
     - spoken_languages : string X
     - runtime : int X
+    - popularity : int X
 
   - Label:
     - Vote average 0.0 to 10.0
