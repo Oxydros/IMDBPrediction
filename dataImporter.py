@@ -23,9 +23,9 @@ LABEL_NAME = "vote_average"
 FEATURES = ["adult", "budget",
             "genres",
             "popularity",
-            #"original_language",
+            "original_language",
             #"production_companies", "production_countries",
-            #"spoken_languages", #"keywords",
+            "spoken_languages", #"keywords",
             "revenue", "runtime"]
 
 def sanitizeData(data):
@@ -49,8 +49,8 @@ def sanitizeData(data):
         #Sanitize dicts of multiple string value, keeping only the "name" field
         for stringDic in [
                           "genres",
-                          #"spoken_languages",
-                          #"production_companies", "production_countries"
+                          "spoken_languages",
+                          #production_companies", "production_countries"
                           #"keywords"
                           ]:
             findName = re.compile("'name':( '.*?')")
@@ -61,10 +61,10 @@ def sanitizeData(data):
             data[idValue].pop(stringDic)
 
         #Sanitize strings, keeping only the value
-        # for stringDic in ["original_language"]:
-        #     value = data[idValue][stringDic]
-        #     data[idValue][value] = 1
-        #     data[idValue].pop(stringDic)
+        for stringDic in ["original_language"]:
+            value = data[idValue][stringDic]
+            data[idValue][value] = 1
+            data[idValue].pop(stringDic)
 
         #Hardcoded adult value
         data[idValue]["adult"] = 1 if data[idValue]["adult"] == "True" else 0

@@ -2,6 +2,8 @@
 
 import os
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 from dataImporter import importData, sanitizeData
@@ -58,12 +60,13 @@ def retrieveLabelAndFeatures(data, ids):
     features = [data[i] for i in ids]
     for f in features:
         f.pop("vote_average")
-    print(features[0])
     #CF http://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.DictVectorizer.html
     v = DictVectorizer(sparse=False)
     features = v.fit_transform(features)
-    print(v.get_feature_names())
+    # print(v.get_feature_names())
+    print(features[0])
     print(len(features[0]))
+    print(len(features))
     return labels, features
 
 def initData():
@@ -95,7 +98,7 @@ def initData():
 def SVM(Xtrain, Ytrain, Xtest, Ytest):
     #Call logistic regression algorithm
     #CF http://scikit-learn.org/stable/auto_examples/linear_model/plot_iris_logistic.html
-    model_SVC = SVC(verbose=1)
+    model_SVC = SVC(verbose=0)
 
     title = "Learning curve SVC"
     cv = ShuffleSplit(n_splits=10, test_size=0.3, random_state=0)
@@ -155,8 +158,8 @@ if __name__ == "__main__":
     print("Movie recommendation engine - Predict score on IMDB")
 
     Xtrain, Ytrain, Xtest, Ytest = initData()
-    SVM(Xtrain, Ytrain, Xtest, Ytest)
     LogisticRegressionModel(Xtrain, Ytrain, Xtest, Ytest)
-    RandomForestModel(Xtrain, Ytrain, Xtest, Ytest)
+    # RandomForestModel(Xtrain, Ytrain, Xtest, Ytest)
+    # SVM(Xtrain, Ytrain, Xtest, Ytest)
     # SequentialCNNModel(Xtrain, Ytrain, Xtest, Ytest)
-    SequentialRNNModel(Xtrain, Ytrain, Xtest, Ytest)
+    # SequentialRNNModel(Xtrain, Ytrain, Xtest, Ytest)

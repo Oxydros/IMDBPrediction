@@ -1,5 +1,8 @@
 import numpy
 import keras
+import matplotlib as mpl
+mpl.use('Agg')
+import matplotlib.pyplot as plt
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Dropout, LSTM
